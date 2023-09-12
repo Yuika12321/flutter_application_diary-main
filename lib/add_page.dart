@@ -1,5 +1,3 @@
-// ignore_for_file: unrelated_type_equality_checks
-
 import 'dart:convert';
 import 'dart:io';
 
@@ -88,8 +86,9 @@ class _AddPageState extends State<AddPage> {
                 ),
               ),
               ElevatedButton(
-                onPressed: () {
-                  var result = fileSave(); // 저장이 잘 되었다면 T, 안되었다면 F
+                onPressed: () async {
+                  var title = controllers[0].text;
+                  var result = await fileSave(); // 저장이 잘 되었다면 T, 안되었다면 F
                   if (result == true) {
                     Navigator.pop(context, 'oo');
                   } else {
