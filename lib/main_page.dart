@@ -42,7 +42,9 @@ class _MainState extends State<Main> {
   void initState() {
     // 비동기를 바로 쓸 수 없음
     super.initState();
-    getPath().then((value) => showList());
+    getPath().then((value) {
+      showList();
+    });
   }
 
   Future<void> getPath() async {
@@ -97,6 +99,9 @@ class _MainState extends State<Main> {
               if (snapshot.hasData) {
                 var d = snapshot.data; // String = [{'title':'asd'} . . . . .]
                 var dataList = jsonDecode(d!) as List<dynamic>; // String -> MAP
+                if (dataList.isEmpty) {
+                  return const Text('내용이 없습니다.');
+                }
                 return ListView.separated(
                   itemBuilder: (context, index) {
                     var data = dataList[index] as Map<String, dynamic>;
@@ -122,7 +127,9 @@ class _MainState extends State<Main> {
           );
         });
       } else {
-        myList = const Text('파일이 없습니다.');
+        setState(() {
+          myList = const Text('파일이 없습니다.');
+        });
       }
     } catch (e) {
       print('error');
