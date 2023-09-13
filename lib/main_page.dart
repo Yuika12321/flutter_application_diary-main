@@ -33,7 +33,7 @@ class Main extends StatefulWidget {
 class _MainState extends State<Main> {
   late Directory? directory;
   String filePath = '';
-  String fileName = 'msg';
+  String fileName = 'msg.123';
   dynamic myList = const Text(
     '준비준비',
     style: TextStyle(fontSize: 40),
@@ -49,6 +49,40 @@ class _MainState extends State<Main> {
     directory = await getApplicationSupportDirectory();
     if (directory != null) {
       filePath = '${directory!.path}/$fileName'; // 경로/경로/diary.json
+    }
+  }
+
+  Future<void> deleteFile() async {
+    try {
+      var file = File(filePath);
+      var result = file.delete().then((value) {
+        print(value);
+        showList();
+      });
+      print(result.toString());
+    } catch (e) {
+      print('delete error');
+    }
+  }
+
+  Future<void> deleteContents(int index) async {
+    try {
+      // 파일을 불러옴 -> 그것을 [{},[]] -> jsondecode를 해서 List<map<dynamic>>으로 변환
+      var file = File(filePath);
+      var fileContents = await file.readAsString();
+      var dataList = jsonDecode(fileContents) as List<dynamic>;
+
+      // List니까 배열 조작   원하는 index번지 삭제하기
+      dataList.removeAt(index);
+
+      // List<map<dynamic>>을 jsonencode (String으로 변경) -> 다시 파일에 쓰기
+      var jsondata = jsonEncode(dataList); // 변수 MAP을 다시 JSON으로 변환
+      await file.writeAsString(jsondata).then((value) {
+        // showList()
+        showList();
+      });
+    } catch (e) {
+      print('delete contents error');
     }
   }
 
@@ -70,7 +104,12 @@ class _MainState extends State<Main> {
                     return ListTile(
                       title: Text(data['title']),
                       subtitle: Text(data['contents']),
-                      trailing: const Icon(Icons.delete),
+                      trailing: IconButton(
+                        onPressed: () {
+                          deleteContents(index);
+                        },
+                        icon: const Icon(Icons.delete),
+                      ),
                     );
                   },
                   separatorBuilder: (context, index) => const Divider(),
@@ -82,6 +121,8 @@ class _MainState extends State<Main> {
             },
           );
         });
+      } else {
+        myList = const Text('파일이 없습니다.');
       }
     } catch (e) {
       print('error');
@@ -97,11 +138,22 @@ class _MainState extends State<Main> {
             const SizedBox(
               height: 100,
             ),
-            ElevatedButton(
-              onPressed: () {
-                showList();
-              },
-              child: const Text('조회'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    showList();
+                  },
+                  child: const Text('조회'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    deleteFile();
+                  },
+                  child: const Text('삭제'),
+                )
+              ],
             ),
             Expanded(child: myList),
           ],
