@@ -38,16 +38,25 @@ class _MainState extends State<Main> {
     '준비준비',
     style: TextStyle(fontSize: 40),
   );
+  DateTime? selectedDate; // 선택된 날짜
+
   @override
   void initState() {
     // 비동기를 바로 쓸 수 없음
     super.initState();
-    getPath().then((value) {
+    getPath(null).then((value) {
       showList();
     });
   }
 
-  Future<void> getPath() async {
+  Future<void> getPath(String? date) async {
+    setState(() {
+      if (date == null) {
+        fileName = '${DateTime.now().toString().split(' ')[0]}.json';
+      } else {
+        fileName = '$date.json';
+      }
+    });
     directory = await getApplicationSupportDirectory();
     if (directory != null) {
       filePath = '${directory!.path}/$fileName'; // 경로/경로/diary.json
@@ -155,11 +164,20 @@ class _MainState extends State<Main> {
                   child: const Text('조회'),
                 ),
                 ElevatedButton(
+                    onPressed: () {
+                      showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2023),
+                          lastDate: DateTime.now());
+                    },
+                    child: const Icon(Icons.calendar_month)),
+                ElevatedButton(
                   onPressed: () {
                     deleteFile();
                   },
                   child: const Text('삭제'),
-                )
+                ),
               ],
             ),
             Expanded(child: myList),
