@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_diary/add_page.dart';
+import 'directory_page.dart';
+import 'add_page.dart';
 import 'package:path_provider/path_provider.dart';
 
 class MainPage extends StatefulWidget {
@@ -16,6 +17,7 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: Main(),
     );
   }
@@ -31,69 +33,31 @@ class Main extends StatefulWidget {
 }
 
 class _MainState extends State<Main> {
-  late Directory? directory;
+  Directory? directory;
   String filePath = '';
-  String fileName = 'msg.123';
+  late String fileName = '앱개발 방과후';
+
   dynamic myList = const Text(
     '준비준비',
-    style: TextStyle(fontSize: 40),
+    style: TextStyle(fontSize: 30),
   );
-  DateTime? selectedDate; // 선택된 날짜
 
   @override
   void initState() {
-    // 비동기를 바로 쓸 수 없음
+    // TODO: implement initState
     super.initState();
-    getPath(null).then((value) {
+    fileName = '앱개발 방과후';
+    getPath().then((value) {
       showList();
     });
   }
 
-  Future<void> getPath(String? date) async {
-    setState(() {
-      if (date == null) {
-        fileName = '${DateTime.now().toString().split(' ')[0]}.json';
-      } else {
-        fileName = '$date.json';
-      }
-    });
-    directory = await getApplicationSupportDirectory();
+  Future<void> getPath() async {
+    directory = await getApplicationDocumentsDirectory();
+    //서포트 디렉토리는 모든 플렛폼에서 지원
     if (directory != null) {
-      filePath = '${directory!.path}/$fileName'; // 경로/경로/diary.json
-    }
-  }
-
-  Future<void> deleteFile() async {
-    try {
-      var file = File(filePath);
-      var result = file.delete().then((value) {
-        print(value);
-        showList();
-      });
-      print(result.toString());
-    } catch (e) {
-      print('delete error');
-    }
-  }
-
-  Future<void> deleteContents(int index) async {
-    try {
-      // 파일을 불러옴 -> 그것을 [{},[]] -> jsondecode를 해서 List<map<dynamic>>으로 변환
-      var file = File(filePath);
-      var fileContents = await file.readAsString();
-      var dataList = jsonDecode(fileContents) as List<dynamic>;
-
-      // List니까 배열 조작   원하는 index번지 삭제하기
-      dataList.removeAt(index);
-
-      // List<map<dynamic>>을 jsonencode (String으로 변경) -> 다시 파일에 쓰기
-      var jsondata = jsonEncode(dataList); // 변수 MAP을 다시 JSON으로 변환
-      await file.writeAsString(jsondata).then((value) {
-        // showList()
-        showList();
-      });
-    } catch (e) {
-      print('delete contents error');
+      filePath = '${directory!.path}/$fileName';
+      print(filePath);
     }
   }
 
@@ -106,29 +70,29 @@ class _MainState extends State<Main> {
             future: file.readAsString(),
             builder: (context, snapshot) {
               if (snapshot.hasData) {
-                var d = snapshot.data; // String = [{'title':'asd'} . . . . .]
-                var dataList = jsonDecode(d!) as List<dynamic>; // String -> MAP
+                var dataList = jsonDecode(snapshot.data!) as List<dynamic>;
                 if (dataList.isEmpty) {
-                  return const Text('내용이 없습니다.');
+                  return const Text(
+                    '내용이없음요',
+                    style: TextStyle(fontSize: 20),
+                  );
                 }
+
                 return ListView.separated(
-                  itemBuilder: (context, index) {
-                    var data = dataList[index] as Map<String, dynamic>;
-                    print(data);
-                    return ListTile(
-                      title: Text(data['title']),
-                      subtitle: Text(data['contents']),
-                      trailing: IconButton(
-                        onPressed: () {
-                          deleteContents(index);
-                        },
-                        icon: const Icon(Icons.delete),
-                      ),
-                    );
-                  },
-                  separatorBuilder: (context, index) => const Divider(),
-                  itemCount: dataList.length,
-                );
+                    itemBuilder: (context, index) {
+                      var data = dataList[index] as Map<String, dynamic>;
+                      return ListTile(
+                          title: Text(data['title']),
+                          subtitle: Text(data['contents']),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () {
+                              deleteContents(index);
+                            },
+                          ));
+                    },
+                    separatorBuilder: (context, index) => const Divider(),
+                    itemCount: dataList.length);
               } else {
                 return const CircularProgressIndicator();
               }
@@ -137,69 +101,121 @@ class _MainState extends State<Main> {
         });
       } else {
         setState(() {
-          myList = const Text('파일이 없습니다.');
+          myList = const Text(
+            '파일이없음요',
+            style: TextStyle(fontSize: 20),
+          );
         });
       }
     } catch (e) {
-      print('error');
+      print('errer');
+    }
+  }
+
+  Future<void> deleteFile() async {
+    try {
+      var file = File(filePath);
+      if (file.existsSync()) {
+        file.delete().then(
+          (value) {
+            print(value);
+            showList();
+          },
+        );
+      }
+    } catch (e) {
+      print('deleteFile error');
+    }
+  }
+
+  Future<void> deleteContents(int index) async {
+    //파일을 불러옴 -> 그것을 [{},{}] -> jsondecode를 해서 List<map<dynamic>>으로 변환
+    //List니까 배열 조작 - 원하는 index번지 삭제 가능
+    //List<map<dynamic>> 를 jsonencode (String으로 변경) -> 다시 파일에 쓰기
+    //showList()
+    try {
+      File file = File(filePath);
+      var fileStr = await file.readAsString();
+      var dataList = jsonDecode(fileStr) as List<dynamic>;
+      dataList.removeAt(index);
+      var jsonData = jsonEncode(dataList);
+      var res = await file
+          .writeAsString(jsonData, mode: FileMode.write)
+          .then((value) => showList());
+    } catch (e) {
+      print('deleteContents error');
+    }
+  }
+
+  Future<void> showFileList() async {
+    try {
+      filePath = directory!.path;
+      Directory dic = Directory(filePath);
+      var dataList = dic.listSync().toList();
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => DirectoryPage(dataList: dataList)),
+      );
+      getPath().then((value) => showList());
+    } catch (e) {
+      print('errer');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Column(
-          children: [
-            const SizedBox(
-              height: 100,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    showList();
-                  },
-                  child: const Text('조회'),
-                ),
-                ElevatedButton(
-                    onPressed: () {
-                      showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(2023),
-                          lastDate: DateTime.now());
-                    },
-                    child: const Icon(Icons.calendar_month)),
-                ElevatedButton(
-                  onPressed: () {
-                    deleteFile();
-                  },
-                  child: const Text('삭제'),
-                ),
-              ],
-            ),
-            Expanded(child: myList),
-          ],
-        ),
+      appBar: AppBar(
+        title: Text(fileName),
+      ),
+      body: SizedBox(
+        width: double.infinity,
+        height: double.infinity,
+        child: Column(children: [
+          IconButton(
+              onPressed: () async {
+                var dt = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2023),
+                    lastDate: DateTime.now());
+                if (dt != null) {
+                  setState(() {
+                    fileName = '${dt.toString().split(' ')[0]}.json';
+                    getPath().then((value) {
+                      showList();
+                    });
+                  });
+                }
+              },
+              icon: const Icon(Icons.edit_calendar_outlined)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              ElevatedButton(onPressed: showFileList, child: const Text('목록')),
+              ElevatedButton(onPressed: deleteFile, child: const Text('삭제'))
+            ],
+          ),
+          Expanded(child: myList)
+        ]),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          var result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddPage(
-                filePath: filePath,
+          onPressed: () async {
+            var result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddPage(filePath: filePath),
               ),
-            ),
-          );
-          if (result == 'ok') {
-            // 결과 출력
-          }
-        },
-        child: const Icon(Icons.pest_control_outlined),
-      ),
+            ); //context 화면 순서 관리,
+            if (result == "oo") {
+              showList();
+            }
+          },
+          child: const Icon(
+            Icons.run_circle,
+            size: 50,
+          )),
     );
   }
 }
